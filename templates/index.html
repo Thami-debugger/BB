@@ -10,7 +10,7 @@
     <div class="container">
         <h1>📈 Bitcoin Price Prediction</h1>
         <h2>🔹 Predicted Price for Friday: <span class="price">${{ friday_price }}</span> USD</h2>
-        <img src="{{ url_for('static', filename='bitcoin_graph.png') }}" alt="Bitcoin Prediction Graph">
+        <iframe src="{{ url_for('static', filename='graph.html') }}" width="100%" height="500px" style="border:none;"></iframe>
     </div>
 </body>
 </html>

@@ -1,17 +1,17 @@
-from flask import Flask, render_template
 import yfinance as yf
 import pandas as pd
-import matplotlib.pyplot as plt
 import numpy as np
+import plotly.graph_objects as go
 from sklearn.linear_model import LinearRegression
 from datetime import datetime, timedelta
+from flask import Flask, render_template
 
 app = Flask(__name__)
 
 # ✅ Step 1: Fetch Historical Bitcoin Prices
 btc = yf.Ticker("BTC-USD")
-history = btc.history(period="1y")  # Fetch last 1 year of data
-history['Days'] = (history.index - history.index.min()).days  # Convert dates
+history = btc.history(period="1y")  
+history['Days'] = (history.index - history.index.min()).days  
 
 # Train Linear Regression model
 X = history[['Days']].values
@@ -26,21 +26,29 @@ future_dates = [history.index[-1] + timedelta(days=i) for i in range(1, 31)]
 prediction_df = pd.DataFrame({'Date': future_dates, 'Predicted Price': predicted_prices.flatten()})
 
 # ✅ Step 3: Get Prediction for Next Friday
-friday_prediction = prediction_df[prediction_df['Date'].dt.weekday == 4].iloc[0]  # Friday is weekday 4
+friday_prediction = prediction_df[prediction_df['Date'].dt.weekday == 4].iloc[0]
 friday_price = round(friday_prediction['Predicted Price'], 2)
 
-# ✅ Step 4: Generate Graph
-plt.figure(figsize=(12, 6))
-plt.plot(history.index, history['Close'], label="Historical Price", color="blue")
-plt.plot(prediction_df['Date'], prediction_df['Predicted Price'], label="Predicted Price", color="red", linestyle="dashed")
-plt.axhline(y=friday_price, color='green', linestyle='--', label=f"Predicted Price for Friday: ${friday_price}")
-plt.xlabel("Date")
-plt.ylabel("Bitcoin Price (USD)")
-plt.title("Bitcoin Prediction vs Historical Data")
-plt.legend()
-plt.grid()
-plt.xticks(rotation=45)
-plt.savefig("static/bitcoin_graph.png")  # Save graph as image
+# ✅ Step 4: Create Interactive Plotly Graph
+fig = go.Figure()
+
+# Historical Price
+fig.add_trace(go.Scatter(x=history.index, y=history['Close'], mode='lines', name='Historical Price', line=dict(color='blue')))
+
+# Predicted Price
+fig.add_trace(go.Scatter(x=prediction_df['Date'], y=prediction_df['Predicted Price'], mode='lines', name='Predicted Price', line=dict(color='red', dash='dash')))
+
+# Friday Prediction
+fig.add_trace(go.Scatter(x=[friday_prediction['Date']], y=[friday_price], mode='markers', name=f'Friday Prediction: ${friday_price}', marker=dict(color='green', size=10)))
+
+# ✅ Add Zoom & Hover Cursor
+fig.update_layout(title="Bitcoin Prediction vs Historical Data", 
+                  xaxis_title="Date", yaxis_title="Bitcoin Price (USD)", 
+                  hovermode="x unified", template="plotly_white", 
+                  xaxis=dict(showspikes=True, spikecolor="red", spikemode="across", spikesnap="cursor"),
+                  yaxis=dict(showspikes=True, spikecolor="blue", spikemode="across", spikesnap="cursor"))
+
+fig.write_html("templates/graph.html")
 
 # ✅ Step 5: Flask Route for Web App
 @app.route('/')
