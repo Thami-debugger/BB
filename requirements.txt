@@ -1,6 +1,6 @@
+flask
+plotly
+yfinance
 pandas
 numpy
-yfinance
 scikit-learn
-matplotlib
-xgboost

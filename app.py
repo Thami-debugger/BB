@@ -1,10 +1,10 @@
+from flask import Flask, render_template
 import yfinance as yf
 import pandas as pd
-import numpy as np
 import plotly.graph_objects as go
 from sklearn.linear_model import LinearRegression
 from datetime import datetime, timedelta
-from flask import Flask, render_template
+import numpy as np
 
 app = Flask(__name__)
 
@@ -29,30 +29,42 @@ prediction_df = pd.DataFrame({'Date': future_dates, 'Predicted Price': predicted
 friday_prediction = prediction_df[prediction_df['Date'].dt.weekday == 4].iloc[0]
 friday_price = round(friday_prediction['Predicted Price'], 2)
 
-# ✅ Step 4: Create Interactive Plotly Graph
-fig = go.Figure()
+# ✅ Step 4: Function to Fetch Real-Time Bitcoin Price
+def get_real_time_price():
+    btc = yf.Ticker("BTC-USD")
+    data = btc.history(period="1d")
+    return data['Close'].iloc[-1]
 
-# Historical Price
-fig.add_trace(go.Scatter(x=history.index, y=history['Close'], mode='lines', name='Historical Price', line=dict(color='blue')))
+# ✅ Step 5: Generate Interactive Plotly Graph
+def generate_graph():
+    real_time_price = get_real_time_price()
+    
+    fig = go.Figure()
 
-# Predicted Price
-fig.add_trace(go.Scatter(x=prediction_df['Date'], y=prediction_df['Predicted Price'], mode='lines', name='Predicted Price', line=dict(color='red', dash='dash')))
+    # Historical Price
+    fig.add_trace(go.Scatter(x=history.index, y=history['Close'], mode='lines', name='Historical Price', line=dict(color='blue')))
 
-# Friday Prediction
-fig.add_trace(go.Scatter(x=[friday_prediction['Date']], y=[friday_price], mode='markers', name=f'Friday Prediction: ${friday_price}', marker=dict(color='green', size=10)))
+    # Predicted Price
+    fig.add_trace(go.Scatter(x=prediction_df['Date'], y=prediction_df['Predicted Price'], mode='lines', name='Predicted Price', line=dict(color='red', dash='dash')))
 
-# ✅ Add Zoom & Hover Cursor
-fig.update_layout(title="Bitcoin Prediction vs Historical Data", 
-                  xaxis_title="Date", yaxis_title="Bitcoin Price (USD)", 
-                  hovermode="x unified", template="plotly_white", 
-                  xaxis=dict(showspikes=True, spikecolor="red", spikemode="across", spikesnap="cursor"),
-                  yaxis=dict(showspikes=True, spikecolor="blue", spikemode="across", spikesnap="cursor"))
+    # Friday Prediction
+    fig.add_trace(go.Scatter(x=[friday_prediction['Date']], y=[friday_price], mode='markers', name=f'Friday Prediction: ${friday_price}', marker=dict(color='green', size=10)))
 
-fig.write_html("templates/graph.html")
+    # ✅ Real-Time Price Line
+    fig.add_trace(go.Scatter(x=[datetime.now()], y=[real_time_price], mode='markers', name=f'Live Price: ${real_time_price:.2f}', marker=dict(color='orange', size=12)))
 
-# ✅ Step 5: Flask Route for Web App
+    # ✅ Add Zoom & Cursor Hover
+    fig.update_layout(title="Bitcoin Prediction vs Real-Time Price", 
+                      xaxis_title="Date", yaxis_title="Bitcoin Price (USD)", 
+                      hovermode="x unified", template="plotly_white", 
+                      xaxis=dict(showspikes=True, spikecolor="red", spikemode="across", spikesnap="cursor"),
+                      yaxis=dict(showspikes=True, spikecolor="blue", spikemode="across", spikesnap="cursor"))
+
+    fig.write_html("static/graph.html")
+
 @app.route('/')
 def index():
+    generate_graph()  # Update the graph before displaying
     return render_template('index.html', friday_price=friday_price)
 
 if __name__ == "__main__":
